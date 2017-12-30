@@ -42,7 +42,7 @@ void loop(void){
 
 void setupWifi()
 {
-  String hostname("Switch-");
+  String hostname("Garage-");
   hostname += String(ESP.getChipId(), HEX);
   if (!wifiManager.autoConnect(hostname.c_str()))
   {
@@ -90,7 +90,7 @@ void setupAlexa()
 {
   // Setup Alexa devices
   fauxmo.addDevice("Garage");
-  Serial.print("[MAIN] Added alexa device: ");
+  Serial.println("[MAIN] Added alexa device: ");
 
   fauxmo.onSet([](unsigned char device_id, const char *device_name, bool state) {
     Serial.printf("[MAIN] Set Device #%d (%s) state: %s\n", device_id, device_name, state ? "ON" : "OFF");
