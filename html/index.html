@@ -3,8 +3,7 @@
 <head>
     <title>Garage</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
     <meta name="apple-mobile-web-app-title" content="Garage">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -40,6 +39,28 @@
         }
     </style>
     <script>
+
+        try {
+            source = new EventSource('/events');
+            source.addEventListener('open', function (evt) {
+                console.log("WS: Events Connected");
+            }, false);
+            source.addEventListener('log', function (evt) 
+            {
+                console.log(evt.data);
+
+            }, false);
+            source.addEventListener('error', function (evt) {
+                if (evt.target.readyState != EventSource.OPEN) {
+                    console.log("WS: Events Disconnected");
+                }
+            }, false);
+        } 
+        catch (error) 
+        {
+            console.log(error);
+        }
+
         srv = {};
         srv.get = function (service, onSuccess, OnError) {
             var xhttp = new XMLHttpRequest();
@@ -52,9 +73,8 @@
             xhttp.send();
         }
 
-        function Toggle(button) {
-            var btn = button ? button: document.getElementById("button");
-            if(btn && !btn.disabled){
+        function Toggle(btn) {
+            if (btn && !btn.disabled) {
                 btn.classList.add("disabled")
                 btn.disabled = true;
                 srv.get('/toggle', function (result) {
@@ -66,44 +86,62 @@
     </script>
 </head>
 
-<body onload="Toggle()">
+<body>
     <div style="display:table; width:100%; height:100%">
         <div style="position:relative; display:table-cell; vertical-align: middle; text-align:center">
-                <svg viewBox="0 0 400 400" version="1.1" id="button"  onclick="Toggle(this)">
-                    <defs id="defs11774">
-                        <linearGradient id="linearGradient11740" y2="367.88" gradientUnits="userSpaceOnUse" x2="315.47" y1="287.49" x1="241.41" inkscape:collect="always">
-                        <stop id="stop4158-5" style="stop-color:#ffffff" offset="0"/>
-                        <stop id="stop4160-5" style="stop-color:#ffffff;stop-opacity:0" offset="1"/>
-                        </linearGradient>
-                        <filter id="filter6126-4" inkscape:collect="always" color-interpolation-filters="sRGB">
-                        <feGaussianBlur id="feGaussianBlur6128-4" stdDeviation="0.53035713" inkscape:collect="always"/>
-                        </filter>
-                        <linearGradient id="linearGradient11742" y2="391.45" gradientUnits="userSpaceOnUse" x2="342" y1="300.86" x1="275.61" inkscape:collect="always">
-                        <stop id="stop7258" style="stop-color:#112b00" offset="0"/>
-                        <stop id="stop7260" style="stop-color:#66ff00" offset="1"/>
-                        </linearGradient>
-                        <radialGradient id="radialGradient11744" gradientUnits="userSpaceOnUse" cy="386.57" cx="312.78" gradientTransform="matrix(-.59327 -.59327 .71505 -.71505 243.27 849.03)" r="53.036" inkscape:collect="always">
-                        <stop id="stop7113-5" style="stop-color:#ffffff;stop-opacity:.40816" offset="0"/>
-                        <stop id="stop7115-9" style="stop-color:#ffffff;stop-opacity:0" offset="1"/>
-                        </radialGradient>
-                        <linearGradient id="linearGradient12135" y2="338.82" gradientUnits="userSpaceOnUse" y1="286.67" gradientTransform="matrix(.95534 0 0 .95534 55.103 592.67)" x2="300.27" x1="255.32" inkscape:collect="always">
-                        <stop id="stop4150-9" style="stop-color:#ffffff" offset="0"/>
-                        <stop id="stop4152-86" style="stop-color:#ffffff;stop-opacity:0" offset="1"/>
-                        </linearGradient>
-                    </defs>
-                    <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer" transform="translate(0 -652.36)">
-                        <g id="g11707" transform="matrix(2.9051 0 0 2.9051 -770.2 -1760.1)">
-                        <path id="path7234" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:#999999" sodipodi:type="arc" d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z" transform="matrix(.97354 0 0 .97354 39.077 565.99)" sodipodi:cy="346.11218" sodipodi:cx="303.75"/>
-                        <path id="path7236" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:url(#linearGradient11740)" sodipodi:type="arc" d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z" transform="matrix(.95960 0 0 .95960 43.313 570.82)" sodipodi:cy="346.11218" sodipodi:cx="303.75"/>
-                        <path id="path7238" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="filter:url(#filter6126-4);fill:#ececec" sodipodi:type="arc" d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z" transform="matrix(.87355 0 0 .87355 69.45 600.6)" sodipodi:cy="346.11218" sodipodi:cx="303.75"/>
-                        <path id="path7240" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="filter:url(#filter6126-4);fill:#999999" sodipodi:type="arc" d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z" transform="matrix(.83838 0 0 .83838 80.131 612.77)" sodipodi:cy="346.11218" sodipodi:cx="303.75"/>
-                        <path id="path7242" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:url(#linearGradient11742)" sodipodi:type="arc" d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z" transform="matrix(.80587 0 0 .80587 90.008 624.02)" sodipodi:cy="346.11218" sodipodi:cx="303.75"/>
-                        <path id="path7244" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:url(#radialGradient11744)" sodipodi:type="arc" d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z" transform="matrix(.75825 0 0 .75825 105.73 642.52)" sodipodi:cy="346.11218" sodipodi:cx="303.75"/>
-                        <path id="path7246" style="opacity:.31771;fill:url(#linearGradient12135)" inkscape:connector-curvature="0" d="m333.79 862.76c-13.331 0.30069-26.186 7.358-33.336 19.742-7.6903 13.32-6.7139 29.266 1.1545 41.331 0.85306-26.532 21.132-46.515 46.324-45.054 8.2589 0.47907 16.054 3.2001 22.859 7.5908-3.2578-7.4498-8.8171-13.953-16.394-18.327-6.4867-3.7451-13.625-5.4393-20.608-5.2818z"/>
-                        </g>
+            <svg viewBox="0 0 400 400" width="300" height="300" version="1.1" id="button" onclick="Toggle(this)">
+                <defs id="defs11774">
+                    <linearGradient id="linearGradient11740" y2="367.88" gradientUnits="userSpaceOnUse" x2="315.47" y1="287.49" x1="241.41" inkscape:collect="always">
+                        <stop id="stop4158-5" style="stop-color:#ffffff" offset="0" />
+                        <stop id="stop4160-5" style="stop-color:#ffffff;stop-opacity:0" offset="1" />
+                    </linearGradient>
+                    <filter id="filter6126-4" inkscape:collect="always" color-interpolation-filters="sRGB">
+                        <feGaussianBlur id="feGaussianBlur6128-4" stdDeviation="0.53035713" inkscape:collect="always" />
+                    </filter>
+                    <linearGradient id="linearGradient11742" y2="391.45" gradientUnits="userSpaceOnUse" x2="342" y1="300.86" x1="275.61" inkscape:collect="always">
+                        <stop id="stop7258" style="stop-color:#112b00" offset="0" />
+                        <stop id="stop7260" style="stop-color:#66ff00" offset="1" />
+                    </linearGradient>
+                    <radialGradient id="radialGradient11744" gradientUnits="userSpaceOnUse" cy="386.57" cx="312.78" gradientTransform="matrix(-.59327 -.59327 .71505 -.71505 243.27 849.03)"
+                        r="53.036" inkscape:collect="always">
+                        <stop id="stop7113-5" style="stop-color:#ffffff;stop-opacity:.40816" offset="0" />
+                        <stop id="stop7115-9" style="stop-color:#ffffff;stop-opacity:0" offset="1" />
+                    </radialGradient>
+                    <linearGradient id="linearGradient12135" y2="338.82" gradientUnits="userSpaceOnUse" y1="286.67" gradientTransform="matrix(.95534 0 0 .95534 55.103 592.67)"
+                        x2="300.27" x1="255.32" inkscape:collect="always">
+                        <stop id="stop4150-9" style="stop-color:#ffffff" offset="0" />
+                        <stop id="stop4152-86" style="stop-color:#ffffff;stop-opacity:0" offset="1" />
+                    </linearGradient>
+                </defs>
+                <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer" transform="translate(0 -652.36)">
+                    <g id="g11707" transform="matrix(2.9051 0 0 2.9051 -770.2 -1760.1)">
+                        <path id="path7234" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:#999999" sodipodi:type="arc" d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z"
+                            transform="matrix(.97354 0 0 .97354 39.077 565.99)" sodipodi:cy="346.11218" sodipodi:cx="303.75"
+                        />
+                        <path id="path7236" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:url(#linearGradient11740)" sodipodi:type="arc"
+                            d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z"
+                            transform="matrix(.95960 0 0 .95960 43.313 570.82)" sodipodi:cy="346.11218" sodipodi:cx="303.75"
+                        />
+                        <path id="path7238" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="filter:url(#filter6126-4);fill:#ececec" sodipodi:type="arc"
+                            d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z"
+                            transform="matrix(.87355 0 0 .87355 69.45 600.6)" sodipodi:cy="346.11218" sodipodi:cx="303.75" />
+                        <path id="path7240" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="filter:url(#filter6126-4);fill:#999999" sodipodi:type="arc"
+                            d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z"
+                            transform="matrix(.83838 0 0 .83838 80.131 612.77)" sodipodi:cy="346.11218" sodipodi:cx="303.75"
+                        />
+                        <path id="path7242" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:url(#linearGradient11742)" sodipodi:type="arc"
+                            d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z"
+                            transform="matrix(.80587 0 0 .80587 90.008 624.02)" sodipodi:cy="346.11218" sodipodi:cx="303.75"
+                        />
+                        <path id="path7244" sodipodi:rx="53.035713" sodipodi:ry="53.035713" style="fill:url(#radialGradient11744)" sodipodi:type="arc"
+                            d="m356.79 346.11c0 29.291-23.745 53.036-53.036 53.036s-53.036-23.745-53.036-53.036 23.745-53.036 53.036-53.036 53.036 23.745 53.036 53.036z"
+                            transform="matrix(.75825 0 0 .75825 105.73 642.52)" sodipodi:cy="346.11218" sodipodi:cx="303.75"
+                        />
+                        <path id="path7246" style="opacity:.31771;fill:url(#linearGradient12135)" inkscape:connector-curvature="0" d="m333.79 862.76c-13.331 0.30069-26.186 7.358-33.336 19.742-7.6903 13.32-6.7139 29.266 1.1545 41.331 0.85306-26.532 21.132-46.515 46.324-45.054 8.2589 0.47907 16.054 3.2001 22.859 7.5908-3.2578-7.4498-8.8171-13.953-16.394-18.327-6.4867-3.7451-13.625-5.4393-20.608-5.2818z"
+                        />
                     </g>
-                </svg>
-            
+                </g>
+            </svg>
         </div>
     </div>
 </body>

@@ -1,21 +1,29 @@
-#define DEBUG
-#include <DNSServer.h>
-#include <ESP8266WiFi.h>
-#include <ESPAsyncWebServer.h>
-#include <ESPAsyncWiFiManager.h>
+#define ESP8266
+
+#include <FS.h> //this needs to be first, or it all crashes and burns...
+#include <ESP8266WiFi.h> 
 #include <ESP8266mDNS.h>
+#include <DNSServer.h>
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h> 
+#include <AsyncMqttClient.h>
 #include <ArduinoOTA.h>
 #include <fauxmoESP.h>
 #include <Ticker.h>
 #include "GARAGE.h"
 #include "GARAGE-HTTP.h"
 
-const int RELAY_PIN = D1;
-const int LED_PIN = 2;
+#define RELAY_PIN D1
+#define LED_PIN 2
 
 DNSServer dns;
 AsyncWebServer httpServer(80);
+AsyncEventSource webEvents("/events");
 AsyncWiFiManager wifiManager(&httpServer, &dns);
+WiFiEventHandler wifiConnectHandler;
+WiFiEventHandler wifiDisconnectHandler;
+AsyncMqttClient mqttClient;
+Ticker mqttReconnectTimer;
 fauxmoESP fauxmo;
 GarageHttp httpApi;
 Ticker ticker;
@@ -25,10 +33,13 @@ void setup(void){
   pinMode(RELAY_PIN, OUTPUT);
   Serial.begin(9600);
 
+  Garage.setupLog(&webEvents);
+
   setupWifi();
+  setupHttp();
   setupOTA();
   setupAlexa();
-  setupHttp();
+  setupMQTT();
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
@@ -37,36 +48,75 @@ void setup(void){
 void loop(void){
   ArduinoOTA.handle();
   fauxmo.handle();
-  delay(1000);
 }
 
 void setupWifi()
 {
-  String hostname("Garage-");
-  hostname += String(ESP.getChipId(), HEX);
-  if (!wifiManager.autoConnect(hostname.c_str()))
+  static AsyncWiFiManagerParameter custom_disp_name("disp_name", "Display Name", Garage.dispname().c_str(), 50);
+  wifiManager.addParameter(&custom_disp_name);
+
+  static AsyncWiFiManagerParameter custom_mqtt_host("mqtt_host", "MQTT Host or IP", Garage.mqtthost().c_str(), 50);
+  wifiManager.addParameter(&custom_mqtt_host);
+
+  static AsyncWiFiManagerParameter custom_mqtt_port("mqtt_port", "MQTT Port", Garage.mqttport().c_str(), 10);
+  wifiManager.addParameter(&custom_mqtt_port);
+
+  static AsyncWiFiManagerParameter custom_mqtt_user("mqtt_user", "MQTT User", Garage.mqttuser().c_str(), 50);
+  wifiManager.addParameter(&custom_mqtt_user);
+
+  static AsyncWiFiManagerParameter custom_mqtt_pwrd("mqtt_pwrd", "MQTT Password", Garage.mqttpwrd().c_str(), 50);
+  wifiManager.addParameter(&custom_mqtt_pwrd);
+
+  //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+  wifiManager.setAPCallback([](AsyncWiFiManager *myWiFiManager)
   {
-    Serial.println("[MAIN] failed to connect and hit timeout");
+    WEB_LOG("[MAIN] Entered config mode");
+    WEB_LOG(WiFi.softAPIP().toString());
+    //if you used auto generated SSID, print it
+    WEB_LOG(myWiFiManager->getConfigPortalSSID());
+    //entered config mode, make led toggle faster
+    ticker.attach(0.2, []{
+      //toggle state
+      int state = digitalRead(BUILTIN_LED); // get the current state of GPIO pin
+      digitalWrite(BUILTIN_LED, !state);    // set pin to the opposite state
+    });
+  });
+  
+  //set config save notify callback
+  wifiManager.setSaveConfigCallback([](){
+    Garage.dispname(custom_disp_name.getValue());
+    Garage.mqtthost(custom_mqtt_host.getValue());
+    Garage.mqttport(atoi(custom_mqtt_port.getValue()));
+    Garage.mqttuser(custom_mqtt_user.getValue());
+    Garage.mqttpwrd(custom_mqtt_pwrd.getValue());
+    Garage.save();
+  });
+
+  wifiManager.setConfigPortalTimeout(300); // wait 5 minutes for Wifi config and then return
+
+  if (!wifiManager.autoConnect(Garage.chipname().c_str()))
+  {
+    WEB_LOG("[MAIN] failed to connect and hit timeout");
     ESP.reset();
   }
 
   //if you get here you have connected to the WiFi
-  Serial.println("[MAIN] connected to Wifi");
+  WEB_LOG("[MAIN] connected to Wifi");
 }
 
 void setupOTA()
 {
-  Serial.println("[OTA] Setup OTA");
+  WEB_LOG("[OTA] Setup OTA");
   // OTA
   // An important note: make sure that your project setting of Flash size is at least double of size of the compiled program. Otherwise OTA fails on out-of-memory.
   ArduinoOTA.onStart([]() {
-    Serial.println("[OTA] OTA: Start");
+    WEB_LOG("[OTA] OTA: Start");
   });
   ArduinoOTA.onEnd([]() {
-    Serial.println("[OTA] OTA: End");
+    WEB_LOG("[OTA] OTA: End");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("OTA progress: %u%%\r", (progress / (total / 100)));
+    WEB_LOG("OTA progress: " + (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
     char errormsg[100];
@@ -81,16 +131,17 @@ void setupOTA()
       strcpy(errormsg + strlen(errormsg), "Receive Failed");
     else if (error == OTA_END_ERROR)
       strcpy(errormsg + strlen(errormsg), "End Failed");
-    Serial.println(errormsg);
+    WEB_LOG(errormsg);
   });
+  ArduinoOTA.setHostname(Garage.chipname().c_str());
   ArduinoOTA.begin();
 }
 
 void setupAlexa()
 {
   // Setup Alexa devices
-  fauxmo.addDevice("Garage");
-  Serial.println("[MAIN] Added alexa device: ");
+  fauxmo.addDevice(Garage.dispname().c_str(), "controllee");
+  WEB_LOG("[MAIN] Added alexa device: ");
 
   fauxmo.onSet([](unsigned char device_id, const char *device_name, bool state) {
     Serial.printf("[MAIN] Set Device #%d (%s) state: %s\n", device_id, device_name, state ? "ON" : "OFF");
@@ -98,27 +149,108 @@ void setupAlexa()
   });
   
   fauxmo.onGet([](unsigned char device_id, const char *device_name) {
-    Serial.printf("[MAIN] Get Device #%d (%s) state: %s\n", device_id, device_name, NULL);
-    return NULL;
+    Serial.printf("[MAIN] Get Device #%d (%s) state: %s\n", device_id, device_name, "NULL");
+    return false;
   });  
 }
 
 void setupHttp()
 {
   // Setup Web UI
-  Serial.println("[MAIN] Setup http server.");
+  WEB_LOG("[MAIN] Setup http server.");
   httpApi.setup(httpServer);
+  httpServer.addHandler(&webEvents);
   httpServer.begin();
 
   Garage.onToggle([&]() {
     toggle();
   });
   Garage.onOpen([&]() {
-    switchOn();
+    toggle();
   });
   Garage.onClose([&]() {
-    switchOff();
+    toggle();
   });
+  Garage.onReset([](){
+    WEB_LOG("[MAIN] Factory reset requested.");
+
+    WiFi.disconnect(true);
+    SPIFFS.format();
+    ESP.restart();
+
+    delay(5000);
+  });
+  Garage.onRestart([](){
+    WEB_LOG("[MAIN] Restarting...");
+    ESP.restart();
+  });
+}
+
+
+void setupMQTT()
+{
+  WEB_LOG("[MQTT] Setup MQTT");
+  
+  WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event) {
+    WEB_LOG("Connected to Wi-Fi.");
+    mqttClient.connect();
+  });
+
+  WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
+    WEB_LOG("Disconnected from Wi-Fi.");
+    mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+  });
+
+  mqttClient.onConnect([](bool sessionPresent) {
+    WEB_LOG("Connected to MQTT.\n\r  Session present: " + String(sessionPresent));
+    
+    uint16_t packetIdSub = mqttClient.subscribe(String("cmnd/" + Garage.hostname() + "/TOGGLE").c_str(), 2);
+    WEB_LOG("Subscribing at QoS 2, packetId: " + String(packetIdSub));
+    
+    uint16_t packetIdPub2 = mqttClient.publish(String("tele/" + Garage.hostname() + "/LWT").c_str(), 2, true, "Online");
+    WEB_LOG("Publishing at QoS 2, packetId: " + String(packetIdPub2));
+  });
+
+  mqttClient.onDisconnect([](AsyncMqttClientDisconnectReason reason) {
+    WEB_LOG("Disconnected from MQTT.");
+
+    if (WiFi.isConnected()) {
+      mqttReconnectTimer.once(10, [](){
+        WEB_LOG("Connecting to MQTT...");
+        mqttClient.connect();
+      });
+    }
+  });
+
+  mqttClient.onMessage([](char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+    
+    String message;
+    for (int i = 0; i < len; i++) {
+      message += (char)payload[i];
+    }
+
+    WEB_LOG((String)"Command received." +
+    "\r\n  topic: " + String(topic) +
+    "\r\n  message: " + message +
+    "\r\n  qos: " + String(properties.qos) +
+    "\r\n  dup: " + String(properties.dup) + 
+    "\r\n  retain: " + String(properties.retain));
+
+    if (strcmp(topic, String("cmnd/" + Garage.hostname() + "/TOGGLE").c_str()) == 0) {
+      
+      toggle();
+
+      if (message == "C") {
+        mqttClient.publish(String("stat/" + Garage.hostname() + "/RESULT").c_str(), 1, true, "Closed");
+      } else {
+        mqttClient.publish(String("stat/" + Garage.hostname() + "/RESULT").c_str(), 1, true, "Opened");
+      }
+    }
+
+  });
+  Garage.setupMQTT(mqttClient);
+  WEB_LOG("Connecting to MQTT...");
+  mqttClient.connect();
 }
 
 void toggle() {
@@ -126,20 +258,20 @@ void toggle() {
   switchOn();
 
   ticker.once_ms(500, []{
-
-    switchOff();
     
+    switchOff();
+
   });
 }
 
 void switchOn() {
-  Serial.println("Toggle switch to ON...");
+  WEB_LOG("Toggle switch to ON...");
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(RELAY_PIN, HIGH);
 }
 
 void switchOff() {
-  Serial.println("Toggle switch to OFF...");
+  WEB_LOG("Toggle switch to OFF...");
   digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(RELAY_PIN, LOW);
 }
