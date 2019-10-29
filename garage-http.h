@@ -187,6 +187,18 @@ public:
     server.on("/close", HTTP_GET, [&](AsyncWebServerRequest *request) {
       respondCloseRequest(request);
     });
+    server.on("/api/state", HTTP_GET, [&](AsyncWebServerRequest *request) {
+      respondStateRequest(request);
+    });
+    server.on("/api/on", HTTP_GET, [&](AsyncWebServerRequest *request) {
+      respondToggleRequest(request);
+    });
+    server.on("/api/off", HTTP_GET, [&](AsyncWebServerRequest *request) {
+      respondToggleRequest(request);
+    });
+    server.on("/api/toggle", HTTP_GET, [&](AsyncWebServerRequest *request) {
+      respondToggleRequest(request);
+    });
 
     server.onNotFound([&](AsyncWebServerRequest *request) {
       respond404Request(request);
