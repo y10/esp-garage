@@ -23,23 +23,49 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // File system builder
 // -----------------------------------------------------------------------------
  
-const fs = require('fs');
-const path = require('path');
 const gulp = require('gulp');
-const plumber = require('gulp-plumber');
+const through = require('through2');
+
 const htmlmin = require('gulp-htmlmin');
-const cleancss = require('gulp-clean-css');
-const uglify = require('gulp-uglify');
 const gzip = require('gulp-gzip');
 const del = require('del');
-const useref = require('gulp-useref');
-const gulpif = require('gulp-if');
 const inline = require('gulp-inline');
 const inlineImages = require('gulp-css-base64');
 const favicon = require('gulp-base64-favicon');
-const gutil = require('gulp-util');
-const foreach = require('gulp-flatmap');
+const crass = require('gulp-crass');
+const path = require('path');
 
+var makeHeader = function(debug) {
+
+    return through.obj(function (source, encoding, callback) {
+
+        var parts = source.path.split(path.sep);
+        var filename = parts[parts.length - 1];
+        var safename = filename.split('.').join('_').split('-').join('_').toUpperCase();
+
+        // Generate output
+        var output = '';
+        output += 'const uint8_t GARAGE_' + safename + '[] PROGMEM = {';
+        for (var i=0; i<source.contents.length; i++) {
+            if (i > 0) { output += ','; }
+            if (0 === (i % 20)) { output += '\n'; }
+            output += '0x' + ('00' + source.contents[i].toString(16)).slice(-2);
+        }
+        output += '\n};';
+
+        // clone the contents
+        var destination = source.clone();
+        destination.path = source.path + '.h';
+        destination.contents = Buffer.from(output);
+
+        if (debug) {
+            console.info('Image ' + filename + ' \tsize: ' + source.contents.length + ' bytes');
+        }
+
+        callback(null, destination);
+    });
+
+};
  
 /* Clean destination folder */
 gulp.task('clean', function() {
@@ -53,63 +79,30 @@ gulp.task('gzip', function() {
         .pipe(gulp.dest('data'));
 });
 
-gulp.task("favicons", function () {
-    return gulp.src("html/icon.png").pipe(favicons({
-        appName: "Switch",
-        appDescription: "Switch & Timer",
-        path: "/favicons/"
-    }))
-    .on("error", gutil.log)
-    .pipe(gulp.dest("data/favicons"));
-});
-
-gulp.task('buildfs_inline', ['clean', 'gzip'], function() {
+gulp.task('html', function() {
     return gulp.src('html/*.html')
         .pipe(favicon())
         .pipe(inline({
             base: 'html/',
-            js: uglify,
-            css: [cleancss, inlineImages],
+            js: [],
+            css: [crass, inlineImages],
             disabledTypes: ['svg', 'img']
         }))
         .pipe(htmlmin({
             collapseWhitespace: true,
             removeComments: true,
-            minifyJS: true,
-            minifyCSS: true
+            minifyCSS: true,
+            minifyJS: true
         }))
         .pipe(gzip())
-        .pipe(gulp.dest('data'));
+        .pipe(gulp.dest('data'))
 })
 
-gulp.task('buildfs_embeded', ['buildfs_inline'], function() {
+gulp.task('headers', function() {
     
-    return gulp.src('data/**/*.*')
-    .pipe(foreach(function(stream, file){
-    
-      var data = file.contents;
-      if(data != null)
-      {
-          var filename =  path.basename(file.path);
-          var wstream = fs.createWriteStream(file.path + '.h');
-          wstream.on('error', function (err) {
-              gutil.log(err);
-          });
-      
-          wstream.write('const uint8_t GARAGE_' + filename.replace(/\./g, '_').replace(/-/g, '_').toUpperCase() +'[] PROGMEM = {')
-      
-          for (i=0; i<data.length; i++) {
-              if (i % 1000 == 0) wstream.write("\n");
-              wstream.write('0x' + ('00' + data[i].toString(16)).slice(-2));
-              if (i<data.length-1) wstream.write(',');
-          }
-          
-          wstream.write('\n};')
-          wstream.end();
-      }
-      return stream;
-    }));
-    
+    return gulp.src('data/**/*.*').pipe(makeHeader(true)).pipe(gulp.dest('data'))
+  
 });
 
-gulp.task('default', ['buildfs_embeded']);
+
+gulp.task('default', gulp.series('clean', 'gzip', 'html', 'headers'));
