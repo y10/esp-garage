@@ -33,8 +33,7 @@ void setup(void){
   pinMode(RELAY_PIN, OUTPUT);
   Serial.begin(9600);
 
-  Garage.setupLog(&webEvents);
-
+  setupGarage();
   setupWifi();
   setupHttp();
   setupOTA();
@@ -48,6 +47,12 @@ void setup(void){
 void loop(void){
   ArduinoOTA.handle();
   fauxmo.handle();
+}
+
+void setupGarage()
+{
+  Garage.setupLog(&webEvents);
+  Garage.load();
 }
 
 void setupWifi()
