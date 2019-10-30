@@ -99,7 +99,7 @@ void setupWifi()
 
   wifiManager.setConfigPortalTimeout(300); // wait 5 minutes for Wifi config and then return
 
-  if (!wifiManager.autoConnect(Garage.chipname().c_str()))
+  if (!wifiManager.autoConnect(Garage.hostname().c_str()))
   {
     WEB_LOG("[MAIN] failed to connect and hit timeout");
     ESP.reset();
@@ -138,7 +138,7 @@ void setupOTA()
       strcpy(errormsg + strlen(errormsg), "End Failed");
     WEB_LOG(errormsg);
   });
-  ArduinoOTA.setHostname(Garage.chipname().c_str());
+  ArduinoOTA.setHostname(Garage.hostname().c_str());
   ArduinoOTA.begin();
 }
 
@@ -209,10 +209,10 @@ void setupMQTT()
   mqttClient.onConnect([](bool sessionPresent) {
     WEB_LOG("Connected to MQTT.\n\r  Session present: " + String(sessionPresent));
     
-    uint16_t packetIdSub = mqttClient.subscribe(String("cmnd/" + Garage.hostname() + "/TOGGLE").c_str(), 2);
+    uint16_t packetIdSub = mqttClient.subscribe(String("cmnd/" + Garage.safename() + "/TOGGLE").c_str(), 2);
     WEB_LOG("Subscribing at QoS 2, packetId: " + String(packetIdSub));
     
-    uint16_t packetIdPub2 = mqttClient.publish(String("tele/" + Garage.hostname() + "/LWT").c_str(), 2, true, "Online");
+    uint16_t packetIdPub2 = mqttClient.publish(String("tele/" + Garage.safename() + "/LWT").c_str(), 2, true, "Online");
     WEB_LOG("Publishing at QoS 2, packetId: " + String(packetIdPub2));
   });
 
@@ -241,14 +241,14 @@ void setupMQTT()
     "\r\n  dup: " + String(properties.dup) + 
     "\r\n  retain: " + String(properties.retain));
 
-    if (strcmp(topic, String("cmnd/" + Garage.hostname() + "/TOGGLE").c_str()) == 0) {
+    if (strcmp(topic, String("cmnd/" + Garage.safename() + "/TOGGLE").c_str()) == 0) {
       
       toggle();
 
       if (message == "C") {
-        mqttClient.publish(String("stat/" + Garage.hostname() + "/RESULT").c_str(), 1, true, "Closed");
+        mqttClient.publish(String("stat/" + Garage.safename() + "/RESULT").c_str(), 1, true, "Closed");
       } else {
-        mqttClient.publish(String("stat/" + Garage.hostname() + "/RESULT").c_str(), 1, true, "Opened");
+        mqttClient.publish(String("stat/" + Garage.safename() + "/RESULT").c_str(), 1, true, "Opened");
       }
     }
 

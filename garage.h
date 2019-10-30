@@ -13,9 +13,9 @@ class GarageClass
 {
 private:
   volatile bool isDoorOpen;
-  String chip_name;
-  String disp_name;
   String host_name;
+  String disp_name;
+  String safe_name;
   String mqtt_host;
   String mqtt_port;
   String mqtt_user;
@@ -32,25 +32,25 @@ private:
 public:
   GarageClass() : isDoorOpen(false)
   {
-    chip_name = "Garage-" + String(ESP.getChipId(), HEX);
+    host_name = "garage-" + String(ESP.getChipId(), HEX);
     mqtt_host = "home";
     mqtt_port = 1883;
     mqtt_user = "homeassistant";
     mqtt_pwrd = "P@$$w0rd";
     disp_name = "Garage";
-    host_name = "garage";
+    safe_name = "garage";
   }
 
-  const String chipname() const {
-    return chip_name;
+  const String hostname() const {
+    return host_name;
   }
 
   const String dispname() const {
     return disp_name;
   }
 
-  const String hostname() const{
-    return host_name;
+  const String safename() const{
+    return safe_name;
   }
 
   void dispname(const char* name){
@@ -60,11 +60,11 @@ public:
       {
         disp_name = name;
       }
-      if (!host_name.equals(disp_name))
+      if (!safe_name.equals(disp_name))
       {
-        host_name = name;
-        host_name.replace(" ", "_");
-        host_name.toLowerCase();
+        safe_name = name;
+        safe_name.replace(" ", "_");
+        safe_name.toLowerCase();
       }
     }
   }
@@ -116,7 +116,7 @@ public:
     
     mqttClient.setKeepAlive(5);
     mqttClient.setCredentials(mqtt_user.c_str(), (mqtt_pwrd.length() == 0) ? nullptr : mqtt_pwrd.c_str());
-    mqttClient.setClientId(chip_name.c_str());
+    mqttClient.setClientId(host_name.c_str());
   }
 
   void setupLog(AsyncEventSource* source)
